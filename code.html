@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Industrial Emergency Training Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #00ff88;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .status {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.8);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+
+        .simulation-area {
+            flex: 1;
+            position: relative;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(255, 0, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
+                linear-gradient(45deg, rgba(0, 0, 0, 0.3) 25%, transparent 25%),
+                linear-gradient(-45deg, rgba(0, 0, 0, 0.3) 25%, transparent 25%);
+            background-size: 100px 100px;
+            overflow: hidden;
+        }
+
+        .factory-layout {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="rgba(0,0,0,0.1)"/><rect x="100" y="100" width="200" height="150" fill="rgba(100,100,100,0.3)" stroke="white" stroke-width="2"/><rect x="400" y="100" width="200" height="150" fill="rgba(100,100,100,0.3)" stroke="white" stroke-width="2"/><rect x="700" y="100" width="200" height="150" fill="rgba(100,100,100,0.3)" stroke="white" stroke-width="2"/><rect x="100" y="400" width="200" height="150" fill="rgba(100,100,100,0.3)" stroke="white" stroke-width="2"/><rect x="400" y="400" width="200" height="150" fill="rgba(100,100,100,0.3)" stroke="white" stroke-width="2"/><rect x="700" y="400" width="200" height="150" fill="rgba(100,100,100,0.3)" stroke="white" stroke-width="2"/><text x="200" y="130" fill="white" font-size="14" text-anchor="middle">Machine A</text><text x="500" y="130" fill="white" font-size="14" text-anchor="middle">Machine B</text><text x="800" y="130" fill="white" font-size="14" text-anchor="middle">Machine C</text><text x="200" y="430" fill="white" font-size="14" text-anchor="middle">Storage</text><text x="500" y="430" fill="white" font-size="14" text-anchor="middle">Control Room</text><text x="800" y="430" fill="white" font-size="14" text-anchor="middle">Exit</text></svg>') no-repeat center center;
+            background-size: contain;
+            opacity: 0.7;
+        }
+
+        .hazard {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            animation: hazardPulse 1s infinite;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .hazard.fire {
+            background: radial-gradient(circle, #ff4444 0%, #ff0000 100%);
+            box-shadow: 0 0 20px #ff4444, 0 0 40px #ff0000;
+        }
+
+        .hazard.gas {
+            background: radial-gradient(circle, #ffff44 0%, #ffaa00 100%);
+            box-shadow: 0 0 20px #ffff44, 0 0 40px #ffaa00;
+        }
+
+        .hazard.electrical {
+            background: radial-gradient(circle, #44ffff 0%, #0088ff 100%);
+            box-shadow: 0 0 20px #44ffff, 0 0 40px #0088ff;
+        }
+
+        @keyframes hazardPulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .exit-route {
+            position: absolute;
+            border: 3px dashed #00ff88;
+            border-radius: 10px;
+            background: rgba(0, 255, 136, 0.1);
+            animation: routeAnimation 2s infinite;
+            z-index: 5;
+        }
+
+        @keyframes routeAnimation {
+            0% { border-color: #00ff88; }
+            50% { border-color: #88ff00; }
+            100% { border-color: #00ff88; }
+        }
+
+        .control-panel {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-left: 2px solid #00ff88;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #00ff88;
+            padding-bottom: 8px;
+        }
+
+        .scenario-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ff4444 0%, #ff0000 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.3);
+        }
+
+        .scenario-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 0, 0, 0.5);
+        }
+
+        .scenario-btn.active {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #0088ff 0%, #0066cc 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0, 136, 255, 0.3);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0, 136, 255, 0.5);
+        }
+
+        .action-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff4444;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(255, 68, 68, 0.8);
+            margin-bottom: 15px;
+        }
+
+        .score {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00ff88;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            color: white;
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #ff4444 0%, #ff0000 100%);
+            color: white;
+        }
+
+        .notification.warning {
+            background: linear-gradient(135deg, #ffaa00 0%, #ff8800 100%);
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88 0%, #88ff00 100%);
+            transition: width 0.3s ease;
+            border-radius: 5px;
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #00ff88;
+        }
+
+        .instructions h3 {
+            color: #00ff88;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .instructions p {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .ar-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .ar-info {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px solid #00ff88;
+            font-size: 12px;
+            white-space: nowrap;
+            backdrop-filter: blur(5px);
+            animation: arInfoPulse 2s infinite;
+        }
+
+        @keyframes arInfoPulse {
+            0% { border-color: #00ff88; }
+            50% { border-color: #88ff00; }
+            100% { border-color: #00ff88; }
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #ff4444;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle 3s linear infinite;
+        }
+
+        @keyframes particle {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-100px) scale(0.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">🏭 AR Emergency Training</div>
+            <div class="status">
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>System Active</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background: #0088ff;"></div>
+                    <span>AR Mode</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background: #ffaa00;"></div>
+                    <span>Training Mode</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="simulation-area">
+                <div class="factory-layout"></div>
+                <div class="ar-overlay" id="arOverlay"></div>
+            </div>
+
+            <div class="control-panel">
+                <div class="panel-section">
+                    <div class="panel-title">⏱️ Training Status</div>
+                    <div class="timer" id="timer">00:00</div>
+                    <div class="score" id="score">Score: 0</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="panel-title">🚨 Emergency Scenarios</div>
+                    <button class="scenario-btn" onclick="startScenario('fire')">🔥 Fire Emergency</button>
+                    <button class="scenario-btn" onclick="startScenario('gas')">☠️ Gas Leak</button>
+                    <button class="scenario-btn" onclick="startScenario('electrical')">⚡ Electrical Hazard</button>
+                    <button class="scenario-btn" onclick="startScenario('evacuation')">🚪 Mass Evacuation</button>
+                </div>
+
+                <div class="panel-section">
+                    <div class="panel-title">🛠️ Emergency Actions</div>
+                    <button class="action-btn" id="alarmBtn" onclick="triggerAlarm()">🔔 Sound Alarm</button>
+                    <button class="action-btn" id="extinguisherBtn" onclick="useExtinguisher()">🧯 Fire Extinguisher</button>
+                    <button class="action-btn" id="evacuateBtn" onclick="evacuate()">🚪 Initiate Evacuation</button>
+                    <button class="action-btn" id="emergencyBtn" onclick="callEmergency()">📞 Call Emergency Services</button>
+                    <button class="action-btn" id="shutdownBtn" onclick="emergencyShutdown()">⚠️ Emergency Shutdown</button>
+                </div>
+
+                <div class="panel-section">
+                    <div class="panel-title">📋 Instructions</div>
+                    <div class="instructions" id="instructions">
+                        <h3>Welcome to AR Emergency Training</h3>
+                        <p>Select an emergency scenario to begin training. Follow the AR guidance and take appropriate actions to handle the emergency situation.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let gameState = {
+            currentScenario: null,
+            isActive: false,
+            score: 0,
+            timer: 0,
+            hazards: [],
+            timerInterval: null,
+            particles: []
+        };
+
+        // Scenario configurations
+        const scenarios = {
+            fire: {
+                name: 'Fire Emergency',
+                hazards: [
+                    { type: 'fire', x: 200, y: 175, info: 'Machine A Fire - Use extinguisher' },
+                    { type: 'fire', x: 150, y: 200, info: 'Spreading fire - Evacuate area' }
+                ],
+                actions: ['alarmBtn', 'extinguisherBtn', 'evacuateBtn', 'emergencyBtn'],
+                correctSequence: ['alarmBtn', 'extinguisherBtn', 'evacuateBtn', 'emergencyBtn'],
+                timeLimit: 180,
+                instructions: 'Fire detected in Machine A area. Sound alarm, use extinguisher, evacuate personnel, and call emergency services.'
+            },
+            gas: {
+                name: 'Gas Leak Emergency',
+                hazards: [
+                    { type: 'gas', x: 500, y: 175, info: 'Gas leak detected - Shut down power' },
+                    { type: 'gas', x: 450, y: 200, info: 'Dangerous gas concentration' }
+                ],
+                actions: ['shutdownBtn', 'alarmBtn', 'evacuateBtn', 'emergencyBtn'],
+                correctSequence: ['shutdownBtn', 'alarmBtn', 'evacuateBtn', 'emergencyBtn'],
+                timeLimit: 120,
+                instructions: 'Gas leak in Machine B area. Shut down power, sound alarm, evacuate, and call emergency services.'
+            },
+            electrical: {
+                name: 'Electrical Hazard',
+                hazards: [
+                    { type: 'electrical', x: 800, y: 175, info: 'Electrical fault - Dangerous voltage' },
+                    { type: 'electrical', x: 750, y: 200, info: 'Power surge detected' }
+                ],
+                actions: ['shutdownBtn', 'alarmBtn', 'evacuateBtn', 'emergencyBtn'],
+                correctSequence: ['shutdownBtn', 'alarmBtn', 'evacuateBtn', 'emergencyBtn'],
+                timeLimit: 90,
+                instructions: 'Electrical fault in Machine C. Shut down power immediately, sound alarm, evacuate area, and call emergency services.'
+            },
+            evacuation: {
+                name: 'Mass Evacuation',
+                hazards: [
+                    { type: 'fire', x: 300, y: 300, info: 'Multiple hazards - Full evacuation' },
+                    { type: 'gas', x: 600, y: 300, info: 'Complex emergency situation' }
+                ],
+                actions: ['alarmBtn', 'evacuateBtn', 'emergencyBtn', 'shutdownBtn'],
+                correctSequence: ['alarmBtn', 'evacuateBtn', 'emergencyBtn', 'shutdownBtn'],
+                timeLimit: 240,
+                instructions: 'Multiple hazards detected. Sound alarm, evacuate all personnel, call emergency services, and shut down facility.'
+            }
+        };
+
+        // Initialize the application
+        function init() {
+            updateDisplay();
+            createBackgroundParticles();
+            setInterval(updateParticles, 100);
+        }
+
+        // Start emergency scenario
+        function startScenario(type) {
+            if (gameState.isActive) {
+                resetScenario();
+            }
+
+            gameState.currentScenario = type;
+            gameState.isActive = true;
+            gameState.score = 0;
+            gameState.timer = 0;
+            gameState.hazards = [];
+
+            const scenario = scenarios[type];
+            
+            // Update UI
+            document.getElementById('instructions').innerHTML = `
+                <h3>${scenario.name}</h3>
+                <p>${scenario.instructions}</p>
+            `;
+
+            // Enable/disable action buttons
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                btn.disabled = !scenario.actions.includes(btn.id);
+            });
+
+            // Highlight active scenario button
+            document.querySelectorAll('.scenario-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Create hazards
+            createHazards(scenario.hazards);
+
+            // Start timer
+            gameState.timerInterval = setInterval(() => {
+                gameState.timer++;
+                updateDisplay();
+                
+                if (gameState.timer >= scenario.timeLimit) {
+                    endScenario(false);
+                }
+            }, 1000);
+
+            // Show evacuation routes
+            showEvacuationRoutes();
+
+            showNotification('Emergency scenario activated!', 'warning');
+        }
+
+        // Create hazard elements
+        function createHazards(hazardData) {
+            const simulationArea = document.querySelector('.simulation-area');
+            const arOverlay = document.getElementById('arOverlay');
+
+            hazardData.forEach((hazard, index) => {
+                // Create hazard element
+                const hazardEl = document.createElement('div');
+                hazardEl.className = `hazard ${hazard.type}`;
+                hazardEl.style.left = hazard.x + 'px';
+                hazardEl.style.top = hazard.y + 'px';
+                hazardEl.onclick = () => showHazardInfo(hazard);
+                
+                simulationArea.appendChild(hazardEl);
+                gameState.hazards.push(hazardEl);
+
+                // Create AR info overlay
+                const arInfo = document.createElement('div');
+                arInfo.className = 'ar-info';
+                arInfo.style.left = (hazard.x + 50) + 'px';
+                arInfo.style.top = (hazard.y - 10) + 'px';
+                arInfo.textContent = hazard.info;
+                
+                arOverlay.appendChild(arInfo);
+
+                // Create particles for fire hazards
+                if (hazard.type === 'fire') {
+                    createHazardParticles(hazard.x, hazard.y);
+                }
+            });
+        }
+
+        // Create particles for visual effects
+        function createHazardParticles(x, y) {
+            setInterval(() => {
+                if (gameState.isActive) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = (x + Math.random() * 40) + 'px';
+                    particle.style.top = y + 'px';
+                    particle.style.animationDelay = Math.random() * 2 + 's';
+                    
+                    document.querySelector('.simulation-area').appendChild(particle);
+                    
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 3000);
+                }
+            }, 200);
+        }
+
+        // Create background particles
+        function createBackgroundParticles() {
+            for (let i = 0; i < 20; i++) {
+                gameState.particles.push({
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    size: Math.random() * 3 + 1,
+                    opacity: Math.random() * 0.5 + 0.2
+                });
+            }
+        }
+
+        // Update background particles
+        function updateParticles() {
+            const canvas = document.createElement('canvas');
+            canvas.style.position = 'absolute';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.pointerEvents = 'none';
+            canvas.style.zIndex = '1';
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const existingCanvas = document.querySelector('.simulation-area canvas');
+            if (existingCanvas) {
+                existingCanvas.remove();
+            }
+            
+            document.querySelector('.simulation-area').appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            gameState.particles.forEach(particle => {
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                
+                if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
+                if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
+                
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 255, 136, ${particle.opacity})`;
+                ctx.fill();
+            });
+        }
+
+        // Show evacuation routes
+        function showEvacuationRoutes() {
+            const routes = [
+                { x: 100, y: 300, width: 800, height: 50 },
+                { x: 350, y: 100, width: 50, height: 200 },
+                { x: 650, y: 100, width: 50, height: 200 }
+            ];
+
+            routes.forEach(route => {
+                const routeEl = document.createElement('div');
+                routeEl.className = 'exit-route';
+                routeEl.style.left = route.x + 'px';
+                routeEl.style.top = route.y + 'px';
+                routeEl.style.width = route.width + 'px';
+                routeEl.style.height = route.height + 'px';
+                
+                document.querySelector('.simulation-area').appendChild(routeEl);
+            });
+        }
+
+        // Emergency action functions
+        function triggerAlarm() {
+            if (!gameState.isActive) return;
+            
+            gameState.score += 20;
+            showNotification('Alarm activated! Personnel alerted.', 'success');
+            updateActionProgress();
+        }
+
+        function useExtinguisher() {
+            if (!gameState.isActive) return;
+            
+            gameState.score += 30;
+            showNotification('Fire extinguisher deployed!', 'success');
+            
+            // Remove fire hazards
+            gameState.hazards.forEach(hazard => {
+                if (hazard.classList.contains('fire')) {
+                    hazard.style.animation = 'none';
+                    hazard.style.opacity = '0.3';
+                }
+            });
+            
+            updateActionProgress();
+        }
+
+        function evacuate() {
+            if (!gameState.isActive) return;
+            
+            gameState.score += 25;
+            showNotification('Evacuation initiated! Personnel moving to safety.', 'success');
+            updateActionProgress();
+        }
+
+        function callEmergency() {
+            if (!gameState.isActive) return;
+            
+            gameState.score += 35;
+            showNotification('Emergency services contacted! Help is on the way.', 'success');
+            updateActionProgress();
+        }
+
+        function emergencyShutdown() {
+            if (!gameState.isActive) return;
+            
+            gameState.score += 40;
+            showNotification('Emergency shutdown activated! Systems secured.', 'success');
+            
+            // Dim all hazards
+            gameState.hazards.forEach(hazard => {
+                hazard.style.opacity = '0.2';
+            });
+            
+            updateActionProgress();
+        }
+
+        // Update action progress
+        function updateActionProgress() {
+            const scenario = scenarios[gameState.currentScenario];
+            const progress = (gameState.score / (scenario.correctSequence.length * 25)) * 100;
+            document.getElementById('progressFill').style.width = Math.min(progress, 100) + '%';
+            
+            if (progress >= 100) {
+                setTimeout(() => endScenario(true), 1000);
+            }
+        }
+
+        // Show hazard information
+        function showHazardInfo(hazard) {
+            showNotification(`Hazard identified: ${hazard.info}`, 'warning');
+        }
+
+        // End scenario
+        function endScenario(success) {
+            gameState.isActive = false;
+            clearInterval(gameState.timerInterval);
+            
+            if (success) {
+                showNotification(`Scenario completed! Final score: ${gameState.score}`, 'success');
+            } else {
+                showNotification('Scenario failed! Time expired.', 'error');
+            }
+            
+            // Calculate final score bonus
+            if (success) {
+                const timeBonus = Math.max(0, 60 - gameState.timer);
+                gameState.score += timeBonus;
+                updateDisplay();
+            }
+            
+            setTimeout(resetScenario, 3000);
+        }
+
+        // Reset scenario
+        function resetScenario() {
+            gameState.isActive = false;
+            gameState.currentScenario = null;
+            gameState.score = 0;
+            gameState.timer = 0;
+            
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+            }
+            
+            // Clear hazards
+            gameState.hazards.forEach(hazard => hazard.remove());
+            gameState.hazards = [];
+            
+            // Clear AR overlays
+            document.getElementById('arOverlay').innerHTML = '';
+            
+            // Clear evacuation routes
+            document.querySelectorAll('.exit-route').forEach(route => route.remove());
+            
+            // Reset action buttons
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            });
+            
+            // Reset scenario buttons
+            document.querySelectorAll('.scenario-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Reset progress bar
+            document.getElementById('progressFill').style.width = '0%';
+            
+            // Reset instructions
+            document.getElementById('instructions').innerHTML = `
+                <h3>Welcome to AR Emergency Training</h3>
+                <p>Select an emergency scenario to begin training. Follow the AR guidance and take appropriate actions to handle the emergency situation.</p>
+            `;
+            
+            updateDisplay();
+        }
+
+        // Show notification
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // Update display
+        function updateDisplay() {
+            const minutes = Math.floor(gameState.timer / 60);
+            const seconds = gameState.timer % 60;
+            document.getElementById('timer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('score').textContent = `Score: ${gameState.score}`;
+            
+            // Update timer color based on urgency
+            const timerEl = document.getElementById('timer');
+            if (gameState.currentScenario) {
+                const scenario = scenarios[gameState.currentScenario];
+                const timeLeft = scenario.timeLimit - gameState.timer;
+                if (timeLeft < 30) {
+                    timerEl.style.color = '#ff0000';
+                    timerEl.style.animation = 'pulse 0.5s infinite';
+                } else if (timeLeft < 60) {
+                    timerEl.style.color = '#ffaa00';
+                } else {
+                    timerEl.style.color = '#00ff88';
+                }
+            } else {
+                timerEl.style.color = '#ff4444';
+                timerEl.style.animation = 'none';
+            }
+        }
+
+        // Add sound effects (using Web Audio API)
+        function playSound(type) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            switch(type) {
+                case 'alarm':
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(400, audioContext.currentTime + 0.5);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    break;
+                case 'success':
+                    oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1);
+                    oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    break;
+                case 'error':
+                    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    break;
+                default:
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            }
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        // Enhanced action functions with sound
+        function triggerAlarm() {
+            if (!gameState.isActive) return;
+            
+            playSound('alarm');
+            gameState.score += 20;
+            showNotification('🔔 Alarm activated! Personnel alerted.', 'success');
+            document.getElementById('alarmBtn').style.backgroundColor = '#00aa00';
+            document.getElementById('alarmBtn').disabled = true;
+            updateActionProgress();
+        }
+
+        function useExtinguisher() {
+            if (!gameState.isActive) return;
+            
+            playSound('success');
+            gameState.score += 30;
+            showNotification('🧯 Fire extinguisher deployed successfully!', 'success');
+            
+            // Visual effect: reduce fire hazards
+            gameState.hazards.forEach(hazard => {
+                if (hazard.classList.contains('fire')) {
+                    hazard.style.animation = 'none';
+                    hazard.style.opacity = '0.3';
+                    hazard.style.transform = 'scale(0.7)';
+                }
+            });
+            
+            document.getElementById('extinguisherBtn').style.backgroundColor = '#00aa00';
+            document.getElementById('extinguisherBtn').disabled = true;
+            updateActionProgress();
+        }
+
+        function evacuate() {
+            if (!gameState.isActive) return;
+            
+            playSound('success');
+            gameState.score += 25;
+            showNotification('🚪 Evacuation initiated! Personnel moving to safety.', 'success');
+            
+            // Highlight evacuation routes
+            document.querySelectorAll('.exit-route').forEach(route => {
+                route.style.borderColor = '#00ff00';
+                route.style.backgroundColor = 'rgba(0, 255, 0, 0.2)';
+            });
+            
+            document.getElementById('evacuateBtn').style.backgroundColor = '#00aa00';
+            document.getElementById('evacuateBtn').disabled = true;
+            updateActionProgress();
+        }
+
+        function callEmergency() {
+            if (!gameState.isActive) return;
+            
+            playSound('success');
+            gameState.score += 35;
+            showNotification('📞 Emergency services contacted! Help is on the way.', 'success');
+            document.getElementById('emergencyBtn').style.backgroundColor = '#00aa00';
+            document.getElementById('emergencyBtn').disabled = true;
+            updateActionProgress();
+        }
+
+        function emergencyShutdown() {
+            if (!gameState.isActive) return;
+            
+            playSound('success');
+            gameState.score += 40;
+            showNotification('⚠️ Emergency shutdown activated! All systems secured.', 'success');
+            
+            // Dim all hazards to show they're controlled
+            gameState.hazards.forEach(hazard => {
+                hazard.style.opacity = '0.2';
+                hazard.style.filter = 'grayscale(50%)';
+            });
+            
+            document.getElementById('shutdownBtn').style.backgroundColor = '#00aa00';
+            document.getElementById('shutdownBtn').disabled = true;
+            updateActionProgress();
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (!gameState.isActive) return;
+            
+            switch(e.key) {
+                case '1':
+                    triggerAlarm();
+                    break;
+                case '2':
+                    useExtinguisher();
+                    break;
+                case '3':
+                    evacuate();
+                    break;
+                case '4':
+                    callEmergency();
+                    break;
+                case '5':
+                    emergencyShutdown();
+                    break;
+            }
+        });
+
+        // Add mobile touch support
+        document.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Initialize application when page loads
+        window.addEventListener('load', () => {
+            init();
+            showNotification('AR Emergency Training System Ready!', 'success');
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Recalculate particle positions
+            gameState.particles.forEach(particle => {
+                if (particle.x > window.innerWidth) particle.x = window.innerWidth - 10;
+                if (particle.y > window.innerHeight) particle.y = window.innerHeight - 10;
+            });
+        });
+    </script>
+</body>
+</html>
